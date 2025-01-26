@@ -100,12 +100,16 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  //starts the ADC timer
 	  HAL_ADC_Start(&hadc1);
+	  //Waits for the conversion to finish
 	  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	  // Reads the value of the ADC and saves it in potValue
 	  int potValue = HAL_ADC_GetValue(&hadc1);
 
-	  //HAL_GPIO_TogglePin(PUL_GPIO_Port, PUL_Pin);
-	  HAL_Delay((4000 + potValue) / 100);
+	  HAL_GPIO_TogglePin(PUL_GPIO_Port, PUL_Pin);
+	  // Waits between .1 and 1 second for next pulse
+  HAL_Delay((800 + potValue) / 8);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -282,7 +286,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, DIR_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, DIR_Pin|PUL_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -290,8 +294,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DIR_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = DIR_Pin|LD2_Pin;
+  /*Configure GPIO pins : DIR_Pin PUL_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = DIR_Pin|PUL_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

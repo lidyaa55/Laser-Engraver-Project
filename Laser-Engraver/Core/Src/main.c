@@ -42,10 +42,16 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
+TIM_HandleTypeDef htim16;
+TIM_HandleTypeDef htim17;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+int Xcurrent = 0; // current X coordinate of laser
+int Ycurrent = 0; // current Y coordinate of laser
+int XDIR;
+int YDIR;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -53,8 +59,10 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM16_Init(void);
+static void MX_TIM17_Init(void);
 /* USER CODE BEGIN PFP */
-
+void StepperMotorDriver(int, int);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -93,13 +101,17 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
+  MX_TIM16_Init();
+  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  /**
 	  //starts the ADC timer
 	  HAL_ADC_Start(&hadc1);
 	  //Waits for the conversion to finish
@@ -107,9 +119,12 @@ int main(void)
 	  // Reads the value of the ADC and saves it in potValue
 	  int potValue = HAL_ADC_GetValue(&hadc1);
 
-	  HAL_GPIO_TogglePin(PUL_GPIO_Port, PUL_Pin);
+	  HAL_GPIO_TogglePin(XPUL_GPIO_Port, XPUL_Pin);
 	  // Waits between .1 and 1 second for next pulse
-  HAL_Delay((800 + potValue) / 8);
+	  HAL_Delay((800 + potValue) / 8);
+	  **/
+
+	  StepperMotorDriver(10, 10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -234,6 +249,70 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 8000;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 5000;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+
+}
+
+/**
+  * @brief TIM17 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM17_Init(void)
+{
+
+  /* USER CODE BEGIN TIM17_Init 0 */
+
+  /* USER CODE END TIM17_Init 0 */
+
+  /* USER CODE BEGIN TIM17_Init 1 */
+
+  /* USER CODE END TIM17_Init 1 */
+  htim17.Instance = TIM17;
+  htim17.Init.Prescaler = 8000;
+  htim17.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim17.Init.Period = 5000;
+  htim17.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim17.Init.RepetitionCounter = 0;
+  htim17.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim17) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM17_Init 2 */
+
+  /* USER CODE END TIM17_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -286,7 +365,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, DIR_Pin|PUL_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(YPUL_GPIO_Port, YPUL_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, XDIR_Pin|XPUL_Pin|LD2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -294,19 +379,118 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DIR_Pin PUL_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = DIR_Pin|PUL_Pin|LD2_Pin;
+  /*Configure GPIO pin : YPUL_Pin */
+  GPIO_InitStruct.Pin = YPUL_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(YPUL_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : XDIR_Pin XPUL_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = XDIR_Pin|XPUL_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : test_interrupt_Pin */
+  GPIO_InitStruct.Pin = test_interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(test_interrupt_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : YDIR_Pin */
+  GPIO_InitStruct.Pin = YDIR_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(YDIR_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+void StepperMotorDriver(int Xend, int Yend) {
+	int Xdistance = Xend - Xcurrent;
+	int Ydistance = Yend - Ycurrent;
+	if (Xdistance > 0){
+		XDIR = 1;
+		HAL_GPIO_WritePin(XDIR_GPIO_Port, XDIR_Pin, 1);
+	} else {
+		HAL_GPIO_WritePin(XDIR_GPIO_Port, XDIR_Pin, 0);
+		XDIR = 0;
+	}
+	if (Ydistance > 0){
+		YDIR = 1;
+		HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, 1);
+	} else {
+		YDIR = 0;
+		HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, 0);
+	}
 
+//	HAL_TIM_Base_Start_IT(&htim16);
+//	while (Xcurrent != Xend)
+//	{
+//		continue;
+//	}
+//	HAL_TIM_Base_Stop_IT(&htim16);
+//
+//	HAL_TIM_Base_Start_IT(&htim17);
+//	while (Ycurrent != Yend)
+//	{
+//		continue;
+//	}
+//	HAL_TIM_Base_Stop_IT(&htim17);
+
+	if (Xdistance != 0){
+		HAL_TIM_Base_Start_IT(&htim16);
+	}
+	if (Ydistance != 0){
+		HAL_TIM_Base_Start_IT(&htim17);
+	}
+	while (Xcurrent != Xend || Ycurrent != Yend){
+		if (Xcurrent == Xend){
+			HAL_TIM_Base_Stop_IT(&htim16);
+		}
+		if (Ycurrent == Yend){
+			HAL_TIM_Base_Stop_IT(&htim17);
+		}
+	}
+}
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim == &htim16)
+	{
+		HAL_GPIO_TogglePin(XPUL_GPIO_Port, XPUL_Pin);
+		if (XDIR == 1)
+		{
+			Xcurrent ++;
+		} else {
+			Xcurrent --;
+		}
+	}
+	if (htim == &htim17)
+	{
+		HAL_GPIO_TogglePin(YPUL_GPIO_Port, YPUL_Pin);
+		if (YDIR == 1)
+		{
+			Ycurrent ++;
+		} else {
+			Ycurrent --;
+		}
+	}
+
+}
 /* USER CODE END 4 */
 
 /**

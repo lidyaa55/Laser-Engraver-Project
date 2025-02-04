@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -47,11 +48,34 @@ TIM_HandleTypeDef htim17;
 
 UART_HandleTypeDef huart2;
 
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for turnXMotor */
+osThreadId_t turnXMotorHandle;
+const osThreadAttr_t turnXMotor_attributes = {
+  .name = "turnXMotor",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for turnYmotor */
+osThreadId_t turnYmotorHandle;
+const osThreadAttr_t turnYmotor_attributes = {
+  .name = "turnYmotor",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* USER CODE BEGIN PV */
 int Xcurrent = 0; // current X coordinate of laser
 int Ycurrent = 0; // current Y coordinate of laser
 int XDIR;
 int YDIR;
+int YMotorTime = 0;
+int XMotorTime = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,6 +85,10 @@ static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_TIM17_Init(void);
+void StartDefaultTask(void *argument);
+void StartXMotor(void *argument);
+void StartYMotor(void *argument);
+
 /* USER CODE BEGIN PFP */
 void StepperMotorDriver(int, int);
 /* USER CODE END PFP */
@@ -107,6 +135,48 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of turnXMotor */
+  turnXMotorHandle = osThreadNew(StartXMotor, NULL, &turnXMotor_attributes);
+
+  /* creation of turnYmotor */
+  turnYmotorHandle = osThreadNew(StartYMotor, NULL, &turnYmotor_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -125,7 +195,7 @@ int main(void)
 	  **/
 	  Xcurrent = 0;
 	  Ycurrent = 0;
-	  StepperMotorDriver(100, 100);
+	  MotorStraightLine(100, 100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -408,10 +478,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(YDIR_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -419,7 +489,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void StepperMotorDriver(int Xend, int Yend) {
+void MotorStraightLine(int Xend, int Yend) {
 	int Xdistance = Xend - Xcurrent;
 	int Ydistance = Yend - Ycurrent;
 	if (Xdistance > 0){
@@ -437,34 +507,9 @@ void StepperMotorDriver(int Xend, int Yend) {
 		HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, 0);
 	}
 
-//	HAL_TIM_Base_Start_IT(&htim16);
-//	while (Xcurrent != Xend)
-//	{
-//		continue;
-//	}
-//	HAL_TIM_Base_Stop_IT(&htim16);
-//
-//	HAL_TIM_Base_Start_IT(&htim17);
-//	while (Ycurrent != Yend)
-//	{
-//		continue;
-//	}
-//	HAL_TIM_Base_Stop_IT(&htim17);
+	osThreadResume(turnXMotorHandle);
+	osThreadResume(turnYMotorHandle);
 
-	if (Xdistance != 0){
-		HAL_TIM_Base_Start_IT(&htim16);
-	}
-	if (Ydistance != 0){
-		HAL_TIM_Base_Start_IT(&htim17);
-	}
-	while (Xcurrent != Xend || Ycurrent != Yend){
-		if (Xcurrent == Xend){
-			HAL_TIM_Base_Stop_IT(&htim16);
-		}
-		if (Ycurrent == Yend){
-			HAL_TIM_Base_Stop_IT(&htim17);
-		}
-	}
 }
 
 
@@ -493,6 +538,103 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 }
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartXMotor */
+/**
+* @brief Function implementing the turnXMotor thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartXMotor */
+void StartXMotor(void *argument)
+{
+  /* USER CODE BEGIN StartXMotor */
+  /* Infinite loop */
+  for(;;)
+  {
+	HAL_GPIO_Toggle(XPUL_GPIO_Port, XPUL_Pin);
+    osDelay(XMotorTime/2);
+    HAL_GPIO_Toggle(XPUL_GPIO_Port, XPUL_Pin);
+    osDelay(XMotorTime/2);
+    if (XDIR == 0)
+    {
+    	Xcurrent += 1;
+    }
+    else
+    {
+    	Xcurrent -= 1;
+    }
+  }
+  /* USER CODE END StartXMotor */
+}
+
+/* USER CODE BEGIN Header_StartYMotor */
+/**
+* @brief Function implementing the turnYmotor thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartYMotor */
+void StartYMotor(void *argument)
+{
+  /* USER CODE BEGIN StartYMotor */
+  /* Infinite loop */
+  for(;;)
+  {
+	HAL_GPIO_Toggle(YPUL_GPIO_Port, YPUL_Pin);
+	osDelay(YMotorTime/2);
+	HAL_GPIO_Toggle(YPUL_GPIO_Port, YPUL_Pin);
+	osDelay(YMotorTime/2);
+	if (YDIR == 0)
+	{
+		Ycurrent += 1;
+	}
+	else
+	{
+		Ycurrent -= 1;
+	}
+  }
+  /* USER CODE END StartYMotor */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM3 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM3) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

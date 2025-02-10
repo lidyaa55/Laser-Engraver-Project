@@ -70,11 +70,12 @@ void Error_Handler(void);
 #define USART_RX_GPIO_Port GPIOA
 #define XPUL_Pin GPIO_PIN_4
 #define XPUL_GPIO_Port GPIOA
-#define LD2_Pin GPIO_PIN_5
-#define LD2_GPIO_Port GPIOA
-#define test_interrupt_Pin GPIO_PIN_6
-#define test_interrupt_GPIO_Port GPIOA
-#define test_interrupt_EXTI_IRQn EXTI9_5_IRQn
+#define SD_CLK_Pin GPIO_PIN_5
+#define SD_CLK_GPIO_Port GPIOA
+#define SD_OUT_Pin GPIO_PIN_6
+#define SD_OUT_GPIO_Port GPIOA
+#define SD_IN_Pin GPIO_PIN_7
+#define SD_IN_GPIO_Port GPIOA
 #define YDIR_Pin GPIO_PIN_0
 #define YDIR_GPIO_Port GPIOB
 #define TMS_Pin GPIO_PIN_13
@@ -83,6 +84,8 @@ void Error_Handler(void);
 #define TCK_GPIO_Port GPIOA
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
+#define SD_CS_Pin GPIO_PIN_6
+#define SD_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

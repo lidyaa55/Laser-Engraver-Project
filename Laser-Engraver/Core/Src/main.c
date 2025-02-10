@@ -62,10 +62,10 @@ const osThreadAttr_t turnXMotor_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for turnYmotor */
-osThreadId_t turnYmotorHandle;
-const osThreadAttr_t turnYmotor_attributes = {
-  .name = "turnYmotor",
+/* Definitions for turnYMotor */
+osThreadId_t turnYMotorHandle;
+const osThreadAttr_t turnYMotor_attributes = {
+  .name = "turnYMotor",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
@@ -74,8 +74,10 @@ int Xcurrent = 0; // current X coordinate of laser
 int Ycurrent = 0; // current Y coordinate of laser
 int XDIR;
 int YDIR;
-int YMotorTime = 0;
-int XMotorTime = 0;
+int YMotorTime = 1000;
+int XMotorTime = 1000;
+int Xend = 100;
+int Yend = 100;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -90,7 +92,7 @@ void StartXMotor(void *argument);
 void StartYMotor(void *argument);
 
 /* USER CODE BEGIN PFP */
-void StepperMotorDriver(int, int);
+void MotorStraightLine();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -161,11 +163,13 @@ int main(void)
   /* creation of turnXMotor */
   turnXMotorHandle = osThreadNew(StartXMotor, NULL, &turnXMotor_attributes);
 
-  /* creation of turnYmotor */
-  turnYmotorHandle = osThreadNew(StartYMotor, NULL, &turnYmotor_attributes);
+  /* creation of turnYMotor */
+  turnYMotorHandle = osThreadNew(StartYMotor, NULL, &turnYMotor_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  osThreadNew(StartXMotor, "Start X Motor", &turnXMotor_attributes);
+  osThreadNew(StartYMotor, "Start Y Motor", &turnYMotor_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -193,9 +197,21 @@ int main(void)
 	  // Waits between .1 and 1 second for next pulse
 	  HAL_Delay((800 + potValue) / 8);
 	  **/
-	  Xcurrent = 0;
-	  Ycurrent = 0;
-	  MotorStraightLine(100, 100);
+
+	  /**
+	  int numberoflines = 0;
+	  for(int i = 0; i<numberoflines; i++)
+	  {
+
+	  }
+	  **/
+	  Xend = 100;
+	  Yend = 100;
+	  MotorStraightLine();
+	  Xend = 0;
+	  Yend = 0;
+	  MotorStraightLine();
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -436,13 +452,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(YPUL_GPIO_Port, YPUL_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(YPUL_GPIO_Port, YPUL_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, XDIR_Pin|XPUL_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, XDIR_Pin|XPUL_Pin|LD2_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -489,17 +505,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void MotorStraightLine(int Xend, int Yend) {
-	int Xdistance = Xend - Xcurrent;
-	int Ydistance = Yend - Ycurrent;
-	if (Xdistance > 0){
+void MotorStraightLine() {
+	if (Xend > Xcurrent){
 		XDIR = 1;
 		HAL_GPIO_WritePin(XDIR_GPIO_Port, XDIR_Pin, 1);
 	} else {
 		HAL_GPIO_WritePin(XDIR_GPIO_Port, XDIR_Pin, 0);
 		XDIR = 0;
 	}
-	if (Ydistance > 0){
+	if (Yend > Ycurrent){
 		YDIR = 1;
 		HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, 1);
 	} else {
@@ -507,36 +521,11 @@ void MotorStraightLine(int Xend, int Yend) {
 		HAL_GPIO_WritePin(YDIR_GPIO_Port, YDIR_Pin, 0);
 	}
 
-	osThreadResume(turnXMotorHandle);
-	osThreadResume(turnYMotorHandle);
+	//osThreadResume(turnXMotorHandle);
+	//osThreadResume(turnYMotorHandle);
 
 }
 
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim == &htim16)
-	{
-		HAL_GPIO_TogglePin(XPUL_GPIO_Port, XPUL_Pin);
-		if (XDIR == 1)
-		{
-			Xcurrent ++;
-		} else {
-			Xcurrent --;
-		}
-	}
-	if (htim == &htim17)
-	{
-		HAL_GPIO_TogglePin(YPUL_GPIO_Port, YPUL_Pin);
-		if (YDIR == 1)
-		{
-			Ycurrent ++;
-		} else {
-			Ycurrent --;
-		}
-	}
-
-}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -549,10 +538,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
+	Xend = 100;
+	Yend = 100;
+	XDIR = 1;
+	YDIR = 1;
+	osDelay(1000);
   }
   /* USER CODE END 5 */
 }
@@ -570,18 +565,21 @@ void StartXMotor(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	HAL_GPIO_Toggle(XPUL_GPIO_Port, XPUL_Pin);
-    osDelay(XMotorTime/2);
-    HAL_GPIO_Toggle(XPUL_GPIO_Port, XPUL_Pin);
-    osDelay(XMotorTime/2);
-    if (XDIR == 0)
-    {
-    	Xcurrent += 1;
-    }
-    else
-    {
-    	Xcurrent -= 1;
-    }
+	if (Xend != Xcurrent){
+		HAL_GPIO_TogglePin(XPUL_GPIO_Port, XPUL_Pin);
+	    osDelay(XMotorTime/2);
+	    HAL_GPIO_TogglePin(XPUL_GPIO_Port, XPUL_Pin);
+	    osDelay(XMotorTime/2);
+	    if (XDIR == 0)
+	    {
+	    	Xcurrent -= 1;
+	    }
+	    else
+	    {
+	    	Xcurrent += 1;
+	    }
+	}
+	osDelay(1);
   }
   /* USER CODE END StartXMotor */
 }
@@ -599,18 +597,21 @@ void StartYMotor(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	HAL_GPIO_Toggle(YPUL_GPIO_Port, YPUL_Pin);
-	osDelay(YMotorTime/2);
-	HAL_GPIO_Toggle(YPUL_GPIO_Port, YPUL_Pin);
-	osDelay(YMotorTime/2);
-	if (YDIR == 0)
-	{
-		Ycurrent += 1;
+	if (Yend != Ycurrent){
+		HAL_GPIO_TogglePin(YPUL_GPIO_Port, YPUL_Pin);
+		osDelay(YMotorTime/2);
+		HAL_GPIO_TogglePin(YPUL_GPIO_Port, YPUL_Pin);
+		osDelay(YMotorTime/2);
+		if (YDIR == 0)
+		{
+			Ycurrent -= 1;
+		}
+		else
+		{
+			Ycurrent += 1;
+		}
 	}
-	else
-	{
-		Ycurrent -= 1;
-	}
+	osDelay(1);
   }
   /* USER CODE END StartYMotor */
 }
@@ -632,7 +633,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+	if (htim == &htim16)
+	{
+		HAL_GPIO_TogglePin(XPUL_GPIO_Port, XPUL_Pin);
+		if (XDIR == 1)
+		{
+			Xcurrent ++;
+		} else {
+			Xcurrent --;
+		}
+	}
+	if (htim == &htim17)
+	{
+		HAL_GPIO_TogglePin(YPUL_GPIO_Port, YPUL_Pin);
+		if (YDIR == 1)
+		{
+			Ycurrent ++;
+		} else {
+			Ycurrent --;
+		}
+	}
   /* USER CODE END Callback 1 */
 }
 
